@@ -1,0 +1,141 @@
+/**
+ * @description 考试列表页面
+ * @author 开发者
+ * @date 2024-04-08
+ */
+
+<template>
+	<view class="container">
+		<!-- 考试列表 -->
+		<view class="exam-list">
+			<view class="exam-item" v-for="(exam, index) in examList" :key="index" @click="startExam(exam)">
+				<view class="exam-info">
+					<text class="exam-title">{{ exam.title }}</text>
+					<text class="exam-desc">{{ exam.description }}</text>
+				</view>
+				<view class="exam-status">
+					<text class="status-text">开始考试</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+	const questionBank = require('../../utils/questionBank.js')
+
+	export default {
+		data() {
+			return {
+				examList: [
+					{
+						id: 1,
+						title: '安全生产基础知识考试',
+						description: '10道单选题，每题10分，满分100分',
+						duration: 60
+					}
+				]
+			}
+		},
+		onLoad() {
+			// 检查用户是否已填写信息
+			const userInfo = uni.getStorageSync('userInfo')
+			if (!userInfo || !userInfo.name || !userInfo.department) {
+				uni.showToast({
+					title: '请先填写个人信息',
+					icon: 'none'
+				})
+				setTimeout(() => {
+					uni.switchTab({
+						url: '/pages/index/index'
+					})
+				}, 1500)
+			}
+		},
+		methods: {
+			startExam(exam) {
+				try {
+					// 从题库中随机选择10道题目
+					const questions = questionBank.getRandomQuestions(10)
+					
+					// 保存考试信息
+					uni.setStorageSync('currentExam', {
+						...exam,
+						questions,
+						startTime: Date.now()
+					})
+					
+					// 跳转到考试页面
+					uni.navigateTo({
+						url: '/pages/examPaper/examPaper'
+					})
+				} catch (error) {
+					console.error('开始考试失败：', error)
+					uni.showToast({
+						title: '开始考试失败，请重试',
+						icon: 'none'
+					})
+				}
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 容器样式 */
+	.container {
+		min-height: 100vh;
+		background-color: #f5f5f5;
+		padding: 20rpx;
+	}
+
+	/* 考试列表样式 */
+	.exam-list {
+		background-color: #fff;
+		border-radius: 20rpx;
+		padding: 20rpx;
+	}
+
+	/* 考试项样式 */
+	.exam-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 30rpx;
+		border-bottom: 1rpx solid #f5f5f5;
+	}
+
+	.exam-item:last-child {
+		border-bottom: none;
+	}
+
+	/* 考试信息样式 */
+	.exam-info {
+		flex: 1;
+	}
+
+	.exam-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 10rpx;
+		display: block;
+	}
+
+	.exam-desc {
+		font-size: 24rpx;
+		color: #666;
+	}
+
+	/* 考试状态样式 */
+	.exam-status {
+		background-color: #1E90FF;
+		border-radius: 10rpx;
+		padding: 10rpx 20rpx;
+	}
+
+	.status-text {
+		font-size: 28rpx;
+		color: #fff;
+	}
+</style> 

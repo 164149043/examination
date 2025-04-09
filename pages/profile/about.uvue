@@ -1,0 +1,117 @@
+/**
+ * @description 关于页面
+ * @author 开发者
+ * @date 2024-04-08
+ */
+
+<template>
+	<view class="container">
+		<view class="about-card">
+			<image class="logo" src="/static/images/logo.png" mode="aspectFit"></image>
+			<text class="app-name">安全生产考试小程序</text>
+			<text class="version">版本 1.0.0</text>
+			
+			<view class="info-list">
+				<view class="info-item">
+					<text class="label">开发者</text>
+					<text class="value">开发者</text>
+				</view>
+				<view class="info-item">
+					<text class="label">联系方式</text>
+					<text class="value">example@example.com</text>
+				</view>
+				<view class="info-item">
+					<text class="label">更新日期</text>
+					<text class="value">2024-04-08</text>
+				</view>
+			</view>
+			
+			<view class="description">
+				<text>本小程序用于安全生产知识考试，提供在线答题、自动评分等功能。</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {}
+		}
+	}
+</script>
+
+<style>
+	.container {
+		min-height: 100vh;
+		background-color: #f5f5f5;
+		padding: 20rpx;
+	}
+
+	.about-card {
+		background-color: #fff;
+		border-radius: 20rpx;
+		padding: 40rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.logo {
+		width: 200rpx;
+		height: 200rpx;
+		margin-bottom: 30rpx;
+	}
+
+	.app-name {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 10rpx;
+	}
+
+	.version {
+		font-size: 28rpx;
+		color: #666;
+		margin-bottom: 40rpx;
+	}
+
+	.info-list {
+		width: 100%;
+		margin-bottom: 40rpx;
+	}
+
+	.info-item {
+		display: flex;
+		justify-content: space-between;
+		padding: 20rpx 0;
+		border-bottom: 1rpx solid #f5f5f5;
+	}
+
+	.info-item:last-child {
+		border-bottom: none;
+	}
+
+	.label {
+		font-size: 28rpx;
+		color: #666;
+	}
+
+	.value {
+		font-size: 28rpx;
+		color: #333;
+	}
+
+	.description {
+		width: 100%;
+		padding: 20rpx;
+		background-color: #f5f5f5;
+		border-radius: 10rpx;
+	}
+
+	.description text {
+		font-size: 28rpx;
+		color: #666;
+		line-height: 1.5;
+	}
+</style> 

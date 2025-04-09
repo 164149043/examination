@@ -1,0 +1,427 @@
+/**
+ * @description 考试得分展示页面
+ * @author 开发者
+ * @date 2024-04-08
+ */
+
+<template>
+	<view class="container">
+		<view class="result-card" v-if="examRecord">
+			<!-- 得分展示 -->
+			<view class="score-display">
+				<view class="score-circle">
+					<view class="score-inner">
+						<text class="score-value">{{ examRecord.score }}</text>
+						<text class="score-unit">分</text>
+					</view>
+				</view>
+				
+				<!-- 成绩评价 -->
+				<view class="score-evaluation">
+					<text class="evaluation-text">{{ scoreEvaluation }}</text>
+				</view>
+			</view>
+			
+			<!-- 排名信息 -->
+			<view class="rank-section">
+				<view class="rank-item">
+					<view class="rank-icon">🏆</view>
+					<view class="rank-content">
+						<text class="rank-label">当前排名</text>
+						<text class="rank-value">第 {{ rank }} 名</text>
+					</view>
+				</view>
+				
+				<view class="rank-item">
+					<view class="rank-icon">👥</view>
+					<view class="rank-content">
+						<text class="rank-label">参与人数</text>
+						<text class="rank-value">{{ totalParticipants }} 人</text>
+					</view>
+				</view>
+			</view>
+			
+			<!-- 考试信息 -->
+			<view class="exam-info">
+				<view class="section-title">
+					<text>考试详情</text>
+				</view>
+				
+				<view class="info-container">
+					<view class="info-item">
+						<view class="info-icon">📝</view>
+						<view class="info-content">
+							<text class="info-label">考试名称</text>
+							<text class="info-value">{{ examRecord.title }}</text>
+						</view>
+					</view>
+					
+					<view class="info-item">
+						<view class="info-icon">⏱️</view>
+						<view class="info-content">
+							<text class="info-label">考试时间</text>
+							<text class="info-value">{{ formatTime(examRecord.submitTime) }}</text>
+						</view>
+					</view>
+					
+					<view class="info-item">
+						<view class="info-icon">👤</view>
+						<view class="info-content">
+							<text class="info-label">考生姓名</text>
+							<text class="info-value">{{ examRecord.name }}</text>
+						</view>
+					</view>
+					
+					<view class="info-item">
+						<view class="info-icon">🏢</view>
+						<view class="info-content">
+							<text class="info-label">所属部门</text>
+							<text class="info-value">{{ examRecord.department }}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 操作按钮 -->
+		<view class="action-buttons">
+			<button class="btn primary" @click="goToHome">返回首页</button>
+			<button class="btn secondary" @click="retakeExam">重新考试</button>
+		</view>
+	</view>
+</template>
+
+<script>
+	// 定义考试记录类型
+	interface ExamRecord {
+		examId: number;
+		title: string;
+		name: string;
+		department: string;
+		score: number;
+		submitTime: number;
+	}
+	
+	export default {
+		data() {
+			return {
+				examRecord: null as ExamRecord | null,
+				rank: 0,
+				totalParticipants: 0
+			}
+		},
+		computed: {
+			// 根据分数给出评价
+			scoreEvaluation(): string {
+				if (!this.examRecord) return ''
+				
+				const score = this.examRecord.score
+				if (score >= 90) return '优秀'
+				if (score >= 80) return '良好'
+				if (score >= 70) return '中等'
+				if (score >= 60) return '及格'
+				return '需要加油'
+			}
+		},
+		onLoad(options) {
+			// 获取用户信息
+			const userInfo = uni.getStorageSync('userInfo') || {}
+			
+			// 获取考试记录
+			const examRecords = uni.getStorageSync('examRecords') || []
+			if (examRecords.length > 0) {
+				// 查找当前用户的考试记录（使用传入的得分参数）
+				if (options.score) {
+					// 按时间倒序排列的所有记录
+					const sortedByTime = [...examRecords].sort((a, b) => b.submitTime - a.submitTime)
+					
+					// 查找当前用户最新的考试记录
+					this.examRecord = sortedByTime.find(record => 
+						record.name === userInfo.name && 
+						record.department === userInfo.department &&
+						record.score == options.score
+					) as ExamRecord
+				}
+				
+				// 如果没找到，使用最新的记录（兼容旧数据）
+				if (!this.examRecord) {
+					this.examRecord = examRecords[examRecords.length - 1] as ExamRecord
+				}
+				
+				// 计算排名
+				if (this.examRecord) {
+					// 获取所有不重复的记录（按姓名和部门去重）
+					const recordMap = new Map()
+					examRecords.forEach(record => {
+						const key = `${record.name}-${record.department}`
+						if (!recordMap.has(key) || record.submitTime > recordMap.get(key).submitTime) {
+							recordMap.set(key, record)
+						}
+					})
+					const uniqueRecords = Array.from(recordMap.values())
+					
+					// 按分数排序计算当前用户的排名
+					const sortedRecords = [...uniqueRecords].sort((a, b) => b.score - a.score)
+					this.rank = sortedRecords.findIndex(record => 
+						record.name === this.examRecord!.name && 
+						record.department === this.examRecord!.department
+					) + 1
+					
+					this.totalParticipants = uniqueRecords.length
+				}
+			} else {
+				uni.showToast({
+					title: '未找到考试记录',
+					icon: 'none'
+				})
+				this.goToHome()
+			}
+		},
+		methods: {
+			formatTime(timestamp: number): string {
+				const date = new Date(timestamp)
+				const year = date.getFullYear()
+				const month = (date.getMonth() + 1).toString().padStart(2, '0')
+				const day = date.getDate().toString().padStart(2, '0')
+				const hour = date.getHours().toString().padStart(2, '0')
+				const minute = date.getMinutes().toString().padStart(2, '0')
+				return `${year}-${month}-${day} ${hour}:${minute}`
+			},
+			goToHome() {
+				uni.reLaunch({
+					url: '/pages/index/index'
+				})
+			},
+			retakeExam() {
+				// 清除当前考试信息
+				uni.removeStorageSync('currentExam')
+				// 直接去首页创建新考试
+				uni.reLaunch({
+					url: '/pages/index/index'
+				})
+			}
+		}
+	}
+</script>
+
+<style>
+	.container {
+		min-height: 100vh;
+		background-color: #f5f5f5;
+		padding: 40rpx;
+	}
+	
+	.result-card {
+		background-color: #fff;
+		border-radius: 20rpx;
+		overflow: hidden;
+		box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	/* 分数展示样式 */
+	.score-display {
+		padding: 60rpx 40rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		background: linear-gradient(135deg, #1E90FF, #6495ED);
+		position: relative;
+	}
+	
+	.score-circle {
+		width: 200rpx;
+		height: 200rpx;
+		border-radius: 50%;
+		background-color: rgba(255, 255, 255, 0.2);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-bottom: 30rpx;
+		animation: pulse 2s infinite;
+	}
+	
+	@keyframes pulse {
+		0% {
+			transform: scale(1);
+			box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+		}
+		70% {
+			transform: scale(1.05);
+			box-shadow: 0 0 0 20rpx rgba(255, 255, 255, 0);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+	
+	.score-inner {
+		width: 180rpx;
+		height: 180rpx;
+		border-radius: 50%;
+		background-color: white;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+	}
+	
+	.score-value {
+		font-size: 80rpx;
+		color: #1E90FF;
+		font-weight: bold;
+		line-height: 1;
+	}
+	
+	.score-unit {
+		font-size: 32rpx;
+		color: #1E90FF;
+		margin-top: 5rpx;
+	}
+	
+	.score-evaluation {
+		background-color: rgba(255, 255, 255, 0.2);
+		padding: 10rpx 40rpx;
+		border-radius: 30rpx;
+		margin-top: 20rpx;
+	}
+	
+	.evaluation-text {
+		font-size: 32rpx;
+		color: #fff;
+		font-weight: bold;
+	}
+	
+	/* 排名信息样式 */
+	.rank-section {
+		display: flex;
+		padding: 40rpx;
+		border-bottom: 2rpx solid #f0f0f0;
+	}
+	
+	.rank-item {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		padding: 0 20rpx;
+	}
+	
+	.rank-item:first-child {
+		border-right: 2rpx solid #f0f0f0;
+	}
+	
+	.rank-icon {
+		font-size: 48rpx;
+		margin-right: 20rpx;
+	}
+	
+	.rank-content {
+		display: flex;
+		flex-direction: column;
+	}
+	
+	.rank-label {
+		font-size: 26rpx;
+		color: #999;
+		margin-bottom: 10rpx;
+	}
+	
+	.rank-value {
+		font-size: 36rpx;
+		color: #333;
+		font-weight: bold;
+	}
+	
+	/* 考试信息样式 */
+	.exam-info {
+		padding: 40rpx;
+	}
+	
+	.section-title {
+		font-size: 30rpx;
+		color: #333;
+		font-weight: bold;
+		margin-bottom: 30rpx;
+		position: relative;
+		padding-left: 20rpx;
+	}
+	
+	.section-title:before {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 8rpx;
+		height: 30rpx;
+		background-color: #1E90FF;
+		border-radius: 4rpx;
+	}
+	
+	.info-container {
+		background-color: #f9f9f9;
+		border-radius: 16rpx;
+		padding: 20rpx;
+	}
+	
+	.info-item {
+		display: flex;
+		align-items: center;
+		padding: 20rpx 10rpx;
+		border-bottom: 2rpx solid #f0f0f0;
+	}
+	
+	.info-item:last-child {
+		border-bottom: none;
+	}
+	
+	.info-icon {
+		font-size: 40rpx;
+		width: 80rpx;
+		text-align: center;
+	}
+	
+	.info-content {
+		flex: 1;
+		margin-left: 20rpx;
+	}
+	
+	.info-label {
+		font-size: 26rpx;
+		color: #999;
+		margin-bottom: 6rpx;
+		display: block;
+	}
+	
+	.info-value {
+		font-size: 30rpx;
+		color: #333;
+	}
+	
+	/* 操作按钮样式 */
+	.action-buttons {
+		margin-top: 40rpx;
+		display: flex;
+		justify-content: space-between;
+	}
+	
+	.btn {
+		flex: 1;
+		height: 88rpx;
+		line-height: 88rpx;
+		text-align: center;
+		border-radius: 44rpx;
+		font-size: 32rpx;
+		margin: 0 10rpx;
+	}
+	
+	.btn.primary {
+		background-color: #1E90FF;
+		color: #fff;
+	}
+	
+	.btn.secondary {
+		background-color: #fff;
+		color: #1E90FF;
+		border: 2rpx solid #1E90FF;
+	}
+</style> 

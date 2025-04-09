@@ -1,0 +1,171 @@
+/**
+ * @description 成绩查询页面
+ * @author 开发者
+ * @date 2024-04-08
+ */
+
+<template>
+	<view class="container">
+		<!-- 成绩统计 -->
+		<view class="score-stats">
+			<view class="stat-item">
+				<text class="stat-value">{{ examCount }}</text>
+				<text class="stat-label">考试次数</text>
+			</view>
+			<view class="stat-item">
+				<text class="stat-value">{{ averageScore }}</text>
+				<text class="stat-label">平均分</text>
+			</view>
+			<view class="stat-item">
+				<text class="stat-value">{{ passRate }}%</text>
+				<text class="stat-label">通过率</text>
+			</view>
+		</view>
+		
+		<!-- 考试记录列表 -->
+		<view class="record-list">
+			<view class="record-item" v-for="(record, index) in examRecords" :key="index">
+				<view class="record-info">
+					<text class="record-title">{{ record.title }}</text>
+					<text class="record-time">{{ record.time }}</text>
+				</view>
+				<view class="record-score" :class="{ 'pass': record.score >= 60 }">
+					<text>{{ record.score }}</text>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+	interface ExamRecord {
+		id: number;
+		title: string;
+		score: number;
+		time: string;
+	}
+
+	export default {
+		data() {
+			return {
+				examCount: 0,
+				averageScore: 0,
+				passRate: 0,
+				examRecords: [] as ExamRecord[]
+			}
+		},
+		onLoad() {
+			this.loadExamRecords()
+		},
+		methods: {
+			loadExamRecords() {
+				const records = uni.getStorageSync('exam_records') || []
+				this.examRecords = records
+				this.examCount = records.length
+				
+				if (this.examCount > 0) {
+					const totalScore = this.examRecords.reduce((sum, record) => sum + record.score, 0)
+					this.averageScore = Math.round(totalScore / this.examCount)
+					
+					const passCount = this.examRecords.filter(record => record.score >= 60).length
+					this.passRate = Math.round((passCount / this.examCount) * 100)
+				}
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 容器样式 */
+	.container {
+		min-height: 100vh;
+		background-color: #f5f5f5;
+		padding: 20rpx;
+	}
+
+	/* 成绩统计样式 */
+	.score-stats {
+		display: flex;
+		justify-content: space-around;
+		background-color: #fff;
+		padding: 30rpx;
+		border-radius: 20rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.stat-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.stat-value {
+		font-size: 40rpx;
+		font-weight: bold;
+		color: #333;
+		margin-bottom: 10rpx;
+	}
+
+	.stat-label {
+		font-size: 24rpx;
+		color: #666;
+	}
+
+	/* 考试记录列表样式 */
+	.record-list {
+		background-color: #fff;
+		border-radius: 20rpx;
+		padding: 20rpx;
+	}
+
+	.record-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20rpx;
+		border-bottom: 1rpx solid #f5f5f5;
+	}
+
+	.record-item:last-child {
+		border-bottom: none;
+	}
+
+	.record-info {
+		flex: 1;
+	}
+
+	.record-title {
+		font-size: 32rpx;
+		color: #333;
+		margin-bottom: 10rpx;
+		display: block;
+	}
+
+	.record-time {
+		font-size: 24rpx;
+		color: #666;
+	}
+
+	.record-score {
+		width: 80rpx;
+		height: 80rpx;
+		border-radius: 50%;
+		background-color: #f5f5f5;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.record-score.pass {
+		background-color: #1E90FF;
+	}
+
+	.record-score text {
+		font-size: 32rpx;
+		color: #333;
+	}
+
+	.record-score.pass text {
+		color: #fff;
+	}
+</style> 

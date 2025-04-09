@@ -1,0 +1,311 @@
+/**
+ * @description 考试详情页面
+ * @author 开发者
+ * @date 2024-04-08
+ */
+
+<template>
+	<!-- 考试详情容器 -->
+	<view class="exam-detail-container">
+		<!-- 考试倒计时 -->
+		<view class="countdown" v-if="showCountdown">
+			<text class="countdown-text">距离考试开始还有：</text>
+			<text class="countdown-time">{{ countdown }}</text>
+		</view>
+
+		<!-- 考试基本信息 -->
+		<view class="exam-info-card">
+			<!-- 考试标题 -->
+			<view class="exam-title">{{ examInfo.title }}</view>
+			<!-- 考试时间 -->
+			<view class="info-item">
+				<text class="label">考试时间：</text>
+				<text class="value">{{ examInfo.time }}</text>
+			</view>
+			<!-- 考试时长 -->
+			<view class="info-item">
+				<text class="label">考试时长：</text>
+				<text class="value">{{ examInfo.duration }}分钟</text>
+			</view>
+			<!-- 考试总分 -->
+			<view class="info-item">
+				<text class="label">考试总分：</text>
+				<text class="value">{{ examInfo.totalScore }}分</text>
+			</view>
+			<!-- 及格分数 -->
+			<view class="info-item">
+				<text class="label">及格分数：</text>
+				<text class="value">{{ examInfo.passScore }}分</text>
+			</view>
+			<!-- 考试状态 -->
+			<view class="info-item">
+				<text class="label">考试状态：</text>
+				<text class="value" :class="examInfo.status">{{ examInfo.statusText }}</text>
+			</view>
+		</view>
+
+		<!-- 考试说明 -->
+		<view class="exam-description">
+			<view class="section-title">考试说明</view>
+			<view class="description-content">
+				<text>{{ examInfo.description }}</text>
+			</view>
+		</view>
+
+		<!-- 开始考试按钮 -->
+		<view class="action-area">
+			<button 
+				class="start-exam-btn" 
+				:class="{ 'disabled': !canStartExam }"
+				@click="startExam"
+				:disabled="!canStartExam"
+			>
+				{{ examInfo.status === 'pending' ? '开始考试' : '已考试' }}
+			</button>
+		</view>
+	</view>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				examId: '', // 考试ID
+				showCountdown: false, // 是否显示倒计时
+				countdown: '', // 倒计时显示
+				countdownTimer: null, // 倒计时定时器
+				examInfo: {
+					title: '安全生产基础知识考试',
+					time: '2024-04-10 09:00',
+					duration: 60,
+					totalScore: 100,
+					passScore: 60,
+					status: 'pending', // pending: 待考试, completed: 已考试
+					statusText: '待考试',
+					description: '1. 本次考试时长为60分钟\n2. 考试过程中请勿退出页面\n3. 考试结束后系统自动提交\n4. 请确保网络连接稳定'
+				}
+			}
+		},
+		computed: {
+			/**
+			 * @description 是否可以开始考试
+			 * @returns {Boolean}
+			 */
+			canStartExam() {
+				return this.examInfo.status === 'pending' && !this.showCountdown
+			}
+		},
+		onLoad(options) {
+			// 获取传入的考试ID
+			this.examId = options.id
+			// 获取考试详情
+			this.getExamDetail()
+		},
+		onUnload() {
+			// 页面卸载时清除定时器
+			if (this.countdownTimer) {
+				clearInterval(this.countdownTimer)
+			}
+		},
+		methods: {
+			/**
+			 * @description 获取考试详情
+			 * @returns {void}
+			 */
+			getExamDetail() {
+				// TODO: 调用接口获取考试详情
+				console.log('获取考试详情，考试ID：', this.examId)
+				
+				// 模拟获取考试详情
+				this.checkExamStatus()
+			},
+			/**
+			 * @description 检查考试状态
+			 * @returns {void}
+			 */
+			checkExamStatus() {
+				const examTime = new Date(this.examInfo.time).getTime()
+				const now = new Date().getTime()
+				const diff = examTime - now
+				
+				if (diff > 0) {
+					// 考试未开始，显示倒计时
+					this.showCountdown = true
+					this.startCountdown(diff)
+				} else {
+					// 考试已开始或已结束
+					this.showCountdown = false
+					// TODO: 检查是否已经参加过考试
+					this.checkExamHistory()
+				}
+			},
+			/**
+			 * @description 开始倒计时
+			 * @param {Number} diff - 时间差（毫秒）
+			 * @returns {void}
+			 */
+			startCountdown(diff) {
+				this.countdownTimer = setInterval(() => {
+					const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+					const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+					const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+					const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+					
+					this.countdown = `${days}天${hours}小时${minutes}分${seconds}秒`
+					
+					diff -= 1000
+					if (diff <= 0) {
+						clearInterval(this.countdownTimer)
+						this.showCountdown = false
+						this.checkExamHistory()
+					}
+				}, 1000)
+			},
+			/**
+			 * @description 检查考试历史
+			 * @returns {void}
+			 */
+			checkExamHistory() {
+				// TODO: 从本地存储或服务器获取考试历史
+				const examHistory = uni.getStorageSync('examHistory') || []
+				const hasCompleted = examHistory.some(item => item.examId === this.examId)
+				
+				if (hasCompleted) {
+					this.examInfo.status = 'completed'
+					this.examInfo.statusText = '已考试'
+				}
+			},
+			/**
+			 * @description 开始考试
+			 * @returns {void}
+			 */
+			startExam() {
+				if (!this.canStartExam) return
+				
+				uni.navigateTo({
+					url: `/pages/examPaper/examPaper?id=${this.examId}`
+				})
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 考试详情容器样式 */
+	.exam-detail-container {
+		padding: 30rpx;
+		min-height: 100vh;
+		background-color: #f5f5f5;
+	}
+
+	/* 倒计时样式 */
+	.countdown {
+		background-color: #1E90FF;
+		color: #fff;
+		padding: 20rpx;
+		text-align: center;
+		margin-bottom: 30rpx;
+		border-radius: 10rpx;
+	}
+
+	.countdown-text {
+		font-size: 28rpx;
+		margin-right: 20rpx;
+	}
+
+	.countdown-time {
+		font-size: 32rpx;
+		font-weight: bold;
+	}
+
+	/* 考试信息卡片样式 */
+	.exam-info-card {
+		background-color: #fff;
+		border-radius: 20rpx;
+		padding: 30rpx;
+		margin-bottom: 30rpx;
+	}
+
+	/* 考试标题样式 */
+	.exam-title {
+		font-size: 36rpx;
+		font-weight: bold;
+		margin-bottom: 30rpx;
+		color: #333;
+	}
+
+	/* 信息项样式 */
+	.info-item {
+		display: flex;
+		margin-bottom: 20rpx;
+		font-size: 28rpx;
+	}
+
+	/* 标签样式 */
+	.label {
+		color: #666;
+		width: 160rpx;
+	}
+
+	/* 值样式 */
+	.value {
+		color: #333;
+		flex: 1;
+	}
+
+	/* 状态样式 */
+	.value.pending {
+		color: #FFA500;
+	}
+
+	.value.completed {
+		color: #32CD32;
+	}
+
+	/* 考试说明样式 */
+	.exam-description {
+		background-color: #fff;
+		border-radius: 20rpx;
+		padding: 30rpx;
+		margin-bottom: 30rpx;
+	}
+
+	/* 章节标题样式 */
+	.section-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		margin-bottom: 20rpx;
+		color: #333;
+	}
+
+	/* 说明内容样式 */
+	.description-content {
+		font-size: 28rpx;
+		color: #666;
+		line-height: 1.6;
+		white-space: pre-line;
+	}
+
+	/* 操作区域样式 */
+	.action-area {
+		padding: 30rpx;
+	}
+
+	/* 开始考试按钮样式 */
+	.start-exam-btn {
+		width: 100%;
+		height: 88rpx;
+		background-color: #1E90FF;
+		color: #fff;
+		border-radius: 44rpx;
+		font-size: 32rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	/* 禁用按钮样式 */
+	.start-exam-btn.disabled {
+		background-color: #ccc;
+	}
+</style> 

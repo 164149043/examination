@@ -1,0 +1,426 @@
+/**
+ * @description 考试答题页面
+ * @author 开发者
+ * @date 2024-04-08
+ */
+
+<template>
+	<view class="container">
+		<!-- 考试信息 - 固定在顶部 -->
+		<view class="exam-header" v-if="currentExam">
+			<view class="header-info">
+				<text class="exam-title">{{ currentExam.title }}</text>
+				<text class="exam-time">剩余时间：{{ formatTime(remainingTime) }}</text>
+			</view>
+			
+			<!-- 进度显示 -->
+			<view class="progress-container">
+				<view class="progress-info">
+					<text class="progress-text">已答 {{ answeredCount }}/{{ currentExam.questions.length }}</text>
+					<text class="progress-percent">{{ Math.round(answeredCount / currentExam.questions.length * 100) }}%</text>
+				</view>
+				<view class="progress-bar">
+					<view class="progress-inner" :style="{ width: (answeredCount / currentExam.questions.length * 100) + '%' }"></view>
+				</view>
+			</view>
+		</view>
+		
+		<!-- 题目列表 -->
+		<scroll-view class="question-scroll" scroll-y v-if="currentExam && currentExam.questions">
+			<view class="question-list">
+				<view class="question-item" v-for="(question, index) in currentExam.questions" :key="question.id">
+					<view class="question-header">
+						<view class="question-number">{{ index + 1 }}</view>
+						<view class="question-title">
+							<text class="question-content">{{ question.question }}</text>
+						</view>
+					</view>
+					
+					<!-- 选项列表 - 改为左对齐且ABCD与选项内容同行 -->
+					<view class="options-list">
+						<view 
+							class="option-item" 
+							v-for="(option, optionIndex) in question.options" 
+							:key="optionIndex"
+							:class="{ 'selected': question.userAnswer === optionIndex }"
+							@click="selectAnswer(question, optionIndex)"
+						>
+							<text class="option-text">{{ ['A', 'B', 'C', 'D'][optionIndex] }}.{{ option }}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+		
+		<!-- 底部操作区 -->
+		<view class="action-bar">
+			<!-- 提交按钮 -->
+			<view class="submit-btn" @click="submitExam">
+				<text>提交试卷</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+	// 定义考试对象类型
+	interface ExamQuestion {
+		id: number;
+		question: string;
+		options: string[];
+		answer: number;
+		userAnswer?: number;
+	}
+	
+	interface Exam {
+		id: number;
+		title: string;
+		description: string;
+		duration: number;
+		questions: ExamQuestion[];
+		startTime: number;
+	}
+	
+	interface UserInfo {
+		name: string;
+		department: string;
+	}
+	
+	export default {
+		data() {
+			return {
+				currentExam: null as Exam | null,
+				remainingTime: 0,
+				timer: null as number | null
+			}
+		},
+		computed: {
+			// 计算已答题数量
+			answeredCount(): number {
+				if (!this.currentExam || !this.currentExam.questions) return 0
+				return this.currentExam.questions.filter(q => q.userAnswer !== undefined).length
+			}
+		},
+		onLoad() {
+			// 获取考试信息
+			const examData = uni.getStorageSync('currentExam')
+			if (!examData) {
+				uni.showToast({
+					title: '考试信息不存在',
+					icon: 'none'
+				})
+				setTimeout(() => {
+					uni.navigateBack()
+				}, 1500)
+				return
+			}
+			
+			this.currentExam = examData as Exam
+			
+			// 初始化剩余时间
+			if (this.currentExam) {
+				const duration = this.currentExam.duration * 60 * 1000 // 转换为毫秒
+				const elapsedTime = Date.now() - this.currentExam.startTime
+				this.remainingTime = Math.max(0, duration - elapsedTime)
+				
+				// 启动计时器
+				this.startTimer()
+			}
+		},
+		onUnload() {
+			// 页面卸载时清除计时器
+			if (this.timer) {
+				clearInterval(this.timer)
+			}
+		},
+		methods: {
+			// 格式化时间
+			formatTime(ms: number): string {
+				const minutes = Math.floor(ms / 60000)
+				const seconds = Math.floor((ms % 60000) / 1000)
+				return `${minutes}:${seconds.toString().padStart(2, '0')}`
+			},
+			
+			// 启动计时器
+			startTimer() {
+				this.timer = setInterval(() => {
+					this.remainingTime -= 1000
+					if (this.remainingTime <= 0) {
+						if (this.timer) {
+							clearInterval(this.timer)
+						}
+						uni.showModal({
+							title: '考试时间到',
+							content: '考试时间已结束，系统将自动提交您的答卷',
+							showCancel: false,
+							success: () => {
+								this.submitExam()
+							}
+						})
+					}
+				}, 1000) as unknown as number
+			},
+			
+			// 选择答案
+			selectAnswer(question: ExamQuestion, optionIndex: number) {
+				question.userAnswer = optionIndex
+				// 保存答题进度
+				if (this.currentExam) {
+					uni.setStorageSync('currentExam', this.currentExam)
+				}
+			},
+			
+			// 提交试卷
+			submitExam() {
+				// 检查是否有未答题的题目
+				if (this.currentExam && this.answeredCount < this.currentExam.questions.length) {
+					uni.showModal({
+						title: '提示',
+						content: `您还有 ${this.currentExam.questions.length - this.answeredCount} 题未作答，确定要提交吗？`,
+						success: (res) => {
+							if (res.confirm) {
+								this.processSubmit()
+							}
+						}
+					})
+				} else {
+					this.processSubmit()
+				}
+			},
+			
+			// 处理提交逻辑
+			processSubmit() {
+				if (this.timer) {
+					clearInterval(this.timer)
+				}
+				
+				if (!this.currentExam) {
+					return
+				}
+				
+				// 计算得分
+				let score = 0
+				this.currentExam.questions.forEach(question => {
+					if (question.userAnswer === question.answer) {
+						score += 10
+					}
+				})
+				
+				// 获取用户信息
+				const userInfo = uni.getStorageSync('userInfo') || {}
+				
+				// 保存考试记录
+				const examRecord = {
+					examId: this.currentExam.id,
+					title: this.currentExam.title,
+					name: userInfo.name || '未知',
+					department: userInfo.department || '未知',
+					score: score,
+					submitTime: Date.now()
+				}
+				
+				// 获取已有的考试记录
+				let examRecords = uni.getStorageSync('examRecords') || []
+				
+				// 检查是否存在同名同部门的记录
+				const index = examRecords.findIndex(
+					record => record.name === examRecord.name && record.department === examRecord.department
+				)
+				
+				// 如果存在同名同部门的记录，则覆盖；否则添加新记录
+				if (index !== -1) {
+					examRecords[index] = examRecord
+				} else {
+					examRecords.push(examRecord)
+				}
+				
+				// 保存更新后的考试记录
+				uni.setStorageSync('examRecords', examRecords)
+				
+				// 跳转到结果页
+				uni.redirectTo({
+					url: `/pages/examResult/examResult?score=${score}`
+				})
+			}
+		}
+	}
+</script>
+
+<style>
+	/* 容器样式 */
+	.container {
+		min-height: 100vh;
+		background-color: #f5f5f5;
+		display: flex;
+		flex-direction: column;
+		padding-top: 180rpx; /* 为固定头部预留空间 */
+	}
+
+	/* 考试头部样式 - 固定在顶部 */
+	.exam-header {
+		background-color: #fff;
+		padding: 30rpx;
+		box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		z-index: 100;
+	}
+	
+	.header-info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 20rpx;
+	}
+
+	.exam-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333;
+	}
+
+	.exam-time {
+		font-size: 28rpx;
+		color: #ff6b6b;
+		font-weight: bold;
+	}
+	
+	/* 进度条样式 */
+	.progress-container {
+		margin-top: 20rpx;
+	}
+	
+	.progress-info {
+		display: flex;
+		justify-content: space-between;
+		margin-bottom: 8rpx;
+	}
+	
+	.progress-text, .progress-percent {
+		font-size: 24rpx;
+		color: #666;
+	}
+	
+	.progress-bar {
+		height: 10rpx;
+		background-color: #e0e0e0;
+		border-radius: 5rpx;
+		overflow: hidden;
+	}
+	
+	.progress-inner {
+		height: 100%;
+		background-color: #1E90FF;
+		border-radius: 5rpx;
+		transition: width 0.3s;
+	}
+
+	/* 题目滚动区域 */
+	.question-scroll {
+		flex: 1;
+		margin-bottom: 120rpx;
+	}
+	
+	/* 题目列表样式 */
+	.question-list {
+		padding: 20rpx;
+	}
+
+	/* 题目项样式 */
+	.question-item {
+		margin-bottom: 40rpx;
+		background-color: #fff;
+		border-radius: 16rpx;
+		padding: 30rpx;
+		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+	}
+	
+	.question-header {
+		display: flex;
+		margin-bottom: 30rpx;
+	}
+	
+	.question-number {
+		width: 48rpx;
+		height: 48rpx;
+		background-color: #1E90FF;
+		color: #fff;
+		border-radius: 24rpx;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		font-size: 26rpx;
+		font-weight: bold;
+		margin-right: 16rpx;
+	}
+
+	.question-title {
+		flex: 1;
+	}
+
+	.question-content {
+		font-size: 30rpx;
+		color: #333;
+		line-height: 1.6;
+	}
+
+	/* 选项列表样式 */
+	.options-list {
+		margin-top: 30rpx;
+	}
+
+	.option-item {
+		background-color: #f8f8f8;
+		border-radius: 12rpx;
+		padding: 24rpx;
+		margin-bottom: 20rpx;
+		border: 2rpx solid #f0f0f0;
+		transition: all 0.2s;
+	}
+
+	.option-text {
+		font-size: 28rpx;
+		color: #333;
+		line-height: 1.6; /* 增加行高改善可读性 */
+		display: block;
+		text-align: left;
+		padding-left: 10rpx;
+	}
+
+	.option-item.selected {
+		background-color: rgba(30, 144, 255, 0.1);
+		border-color: #1E90FF;
+	}
+
+	.option-item.selected .option-text {
+		color: #1E90FF;
+		font-weight: bold;
+	}
+
+	/* 底部操作栏 */
+	.action-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		background-color: #fff;
+		padding: 20rpx 30rpx;
+		box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.1);
+	}
+	
+	/* 提交按钮样式 */
+	.submit-btn {
+		background-color: #1E90FF;
+		border-radius: 40rpx;
+		padding: 20rpx;
+		text-align: center;
+	}
+
+	.submit-btn text {
+		font-size: 32rpx;
+		color: #fff;
+		font-weight: bold;
+	}
+</style> 

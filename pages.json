@@ -1,0 +1,41 @@
+{
+	"pages": [ 
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "安全生产考试"
+			}
+		},
+		{
+			"path": "pages/examPaper/examPaper",
+			"style": {
+				"navigationBarTitleText": "考试答题"
+			}
+		},
+		{
+			"path": "pages/examResult/examResult",
+			"style": {
+				"navigationBarTitleText": "考试结果",
+				"navigationBarBackButton": "none"
+			}
+		},
+		{
+			"path": "pages/admin/login",
+			"style": {
+				"navigationBarTitleText": "管理员登录"
+			}
+		},
+		{
+			"path": "pages/admin/dashboard",
+			"style": {
+				"navigationBarTitleText": "管理后台"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "安全生产考试",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	}
+}

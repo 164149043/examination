@@ -1,0 +1,357 @@
+/**
+ * @description 管理后台页面
+ * @author 开发者
+ * @date 2024-04-08
+ */
+
+<template>
+	<view class="container">
+		<!-- 顶部导航 -->
+		<view class="nav-bar">
+			<text class="title">管理后台</text>
+			<text class="logout" @click="logout">退出</text>
+		</view>
+		
+		<!-- 导出按钮 -->
+		<view class="export-section">
+			<view class="export-options">
+				<view class="export-btn" @click="exportData('csv')">
+					<text>导出CSV</text>
+				</view>
+				<view class="export-btn" @click="exportData('excel')">
+					<text>导出Excel</text>
+				</view>
+			</view>
+			<view class="export-tip">
+				<text>导出后的数据可粘贴到Excel中使用</text>
+			</view>
+		</view>
+		
+		<!-- 考试记录表格 - 重新设计为静态布局 -->
+		<view class="table-container">
+			<!-- 表头行 -->
+			<view class="table-header">
+				<view class="cell-name">姓名</view>
+				<view class="cell-dept">部门</view>
+				<view class="cell-score">分数</view>
+				<view class="cell-rank">排名</view>
+				<view class="cell-time">考试时间</view>
+			</view>
+			
+			<!-- 数据行 -->
+			<view class="table-content">
+				<view class="table-row" v-for="(record, index) in recordsWithRank" :key="index">
+					<view class="cell-name">{{ record.name }}</view>
+					<view class="cell-dept">{{ record.department }}</view>
+					<view class="cell-score">{{ record.score }}</view>
+					<view class="cell-rank">{{ record.rank }}</view>
+					<view class="cell-time">{{ formatTime(record.submitTime) }}</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+	// 定义考试记录类型
+	interface ExamRecord {
+		examId: number;
+		title: string;
+		name: string;
+		department: string;
+		score: number;
+		submitTime: number;
+		rank?: number;
+	}
+	
+	export default {
+		data() {
+			return {
+				examRecords: [] as ExamRecord[],
+				recordsWithRank: [] as ExamRecord[]
+			}
+		},
+		onShow() {
+			// 检查登录状态
+			const token = uni.getStorageSync('adminToken')
+			if (!token) {
+				uni.redirectTo({
+					url: '/pages/admin/login'
+				})
+				return
+			}
+			
+			// 加载考试记录
+			this.loadExamRecords()
+		},
+		methods: {
+			// 加载考试记录
+			loadExamRecords() {
+				const records = uni.getStorageSync('examRecords') || []
+				
+				// 对记录进行分组处理，同名同部门只保留最新一条记录
+				const recordMap = new Map()
+				
+				// 首先按时间从新到旧排序
+				const sortedByTime = [...records].sort((a, b) => b.submitTime - a.submitTime)
+				
+				// 遍历记录，只保留同名同部门的最新一条
+				sortedByTime.forEach(record => {
+					const key = `${record.name}-${record.department}`
+					if (!recordMap.has(key)) {
+						recordMap.set(key, record)
+					}
+				})
+				
+				// 转换回数组
+				const uniqueRecords = Array.from(recordMap.values())
+				
+				// 按分数排序以计算排名
+				const sortedByScore = [...uniqueRecords].sort((a, b) => b.score - a.score)
+				
+				// 添加排名
+				const recordsWithRank = sortedByScore.map((record, index) => {
+					return {
+						...record,
+						rank: index + 1
+					}
+				})
+				
+				// 按时间排序（最新的在前）
+				this.recordsWithRank = recordsWithRank.sort((a, b) => b.submitTime - a.submitTime) as ExamRecord[]
+				this.examRecords = uniqueRecords as ExamRecord[]
+			},
+			
+			// 格式化时间
+			formatTime(timestamp: number): string {
+				const date = new Date(timestamp)
+				return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+			},
+			
+			// 导出数据
+			exportData(type = 'csv') {
+				if (this.examRecords.length === 0) {
+					uni.showToast({
+						title: '没有可导出的数据',
+						icon: 'none'
+					})
+					return
+				}
+				
+				if (type === 'csv') {
+					this.exportCSV()
+				} else if (type === 'excel') {
+					this.exportExcel()
+				}
+			},
+			
+			// 导出CSV
+			exportCSV() {
+				// 构建CSV内容
+				let csvContent = '姓名,部门,分数,排名,考试时间\n'
+				
+				this.recordsWithRank.forEach((record) => {
+					const row = [
+						record.name,
+						record.department,
+						record.score,
+						record.rank,
+						this.formatTime(record.submitTime)
+					].join(',')
+					csvContent += row + '\n'
+				})
+				
+				// 保存CSV数据到剪贴板
+				uni.showModal({
+					title: '导出CSV成功',
+					content: '考试记录数据已导出为CSV格式，可粘贴到Excel中使用',
+					showCancel: false,
+					success: () => {
+						uni.setClipboardData({
+							data: csvContent,
+							success: () => {
+								uni.showToast({
+									title: '数据已复制到剪贴板',
+									icon: 'success'
+								})
+							}
+						})
+					}
+				})
+			},
+			
+			// 导出Excel（通过HTML表格格式，更适合Excel粘贴）
+			exportExcel() {
+				// 构建HTML表格内容
+				let htmlContent = '<table border="1">\n'
+				// 添加表头
+				htmlContent += '<tr><th>姓名</th><th>部门</th><th>分数</th><th>排名</th><th>考试时间</th></tr>\n'
+				
+				// 添加数据行
+				this.recordsWithRank.forEach((record) => {
+					htmlContent += '<tr>'
+					htmlContent += `<td>${record.name}</td>`
+					htmlContent += `<td>${record.department}</td>`
+					htmlContent += `<td>${record.score}</td>`
+					htmlContent += `<td>${record.rank}</td>`
+					htmlContent += `<td>${this.formatTime(record.submitTime)}</td>`
+					htmlContent += '</tr>\n'
+				})
+				htmlContent += '</table>'
+				
+				// 保存HTML表格到剪贴板
+				uni.showModal({
+					title: '导出Excel格式成功',
+					content: '数据已复制到剪贴板，粘贴到Excel中即可保持表格格式',
+					showCancel: false,
+					success: () => {
+						uni.setClipboardData({
+							data: htmlContent,
+							success: () => {
+								uni.showToast({
+									title: '表格数据已复制',
+									icon: 'success'
+								})
+							}
+						})
+					}
+				})
+			},
+			
+			// 退出登录
+			logout() {
+				uni.removeStorageSync('adminToken')
+				uni.redirectTo({
+					url: '/pages/admin/login'
+				})
+			}
+		}
+	}
+</script>
+
+<style>
+	.container {
+		min-height: 100vh;
+		background-color: #f5f5f5;
+	}
+
+	/* 导航栏样式 */
+	.nav-bar {
+		background-color: #1E90FF;
+		padding: 20rpx 40rpx;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.title {
+		font-size: 32rpx;
+		color: #fff;
+		font-weight: bold;
+	}
+
+	.logout {
+		font-size: 28rpx;
+		color: #fff;
+	}
+	
+	/* 导出按钮样式 */
+	.export-section {
+		padding: 20rpx 40rpx;
+	}
+	
+	.export-options {
+		display: flex;
+		justify-content: space-between;
+	}
+	
+	.export-btn {
+		background-color: #1E90FF;
+		border-radius: 10rpx;
+		padding: 16rpx 0;
+		text-align: center;
+		flex: 1;
+		margin: 0 10rpx;
+	}
+	
+	.export-btn text {
+		font-size: 28rpx;
+		color: #fff;
+	}
+	
+	.export-tip {
+		margin-top: 10rpx;
+		text-align: center;
+	}
+	
+	.export-tip text {
+		font-size: 24rpx;
+		color: #666;
+	}
+
+	/* 新表格样式 */
+	.table-container {
+		margin: 20rpx;
+		background-color: #fff;
+		border: 1px solid #000;
+	}
+	
+	/* 表头样式 */
+	.table-header {
+		display: grid;
+		grid-template-columns: 150rpx 200rpx 100rpx 100rpx 180rpx;
+		background-color: #f0f0f0;
+		font-weight: bold;
+		font-size: 28rpx;
+		color: #333;
+		border-bottom: 1px solid #000;
+	}
+	
+	/* 表格内容样式 */
+	.table-content {
+		font-size: 28rpx;
+		color: #333;
+	}
+	
+	/* 表格行样式 */
+	.table-row {
+		display: grid;
+		grid-template-columns: 150rpx 200rpx 100rpx 100rpx 180rpx;
+		border-bottom: 1px solid #000;
+	}
+	
+	/* 单元格共有样式 */
+	.table-header > view, .table-row > view {
+		padding: 16rpx;
+		text-align: center;
+		border-right: 1px solid #000;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+	
+	.table-header > view:last-child, .table-row > view:last-child {
+		border-right: none;
+	}
+	
+	/* 特定单元格样式 */
+	.cell-name {
+		
+	}
+	
+	.cell-dept {
+		
+	}
+	
+	.cell-score {
+		
+	}
+	
+	.cell-rank {
+		
+	}
+	
+	.cell-time {
+		
+	}
+</style> 
