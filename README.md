@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 安全生产知识考试系统
 
 一个基于uni-app开发的安全生产知识考试小程序。
@@ -76,3 +77,7 @@ git clone [repository-url]
 ## 版权信息
 
 Copyright © 2024 
+=======
+# examination
+员工安全生成考试小程序
+>>>>>>> fc828bea29a9fc0b0cea9d1c2b1aab76649fa442
