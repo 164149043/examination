@@ -152,5 +152,5 @@ Copyright © 2025 张一依有把越女剑
 ## 联系方式
 
 - 作者：张一依有把越女剑
-- 邮箱：example@example.com
+- 邮箱：164149043@qq.com
 - GitHub：https://github.com/164149043
