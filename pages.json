@@ -30,6 +30,18 @@
 			"style": {
 				"navigationBarTitleText": "管理后台"
 			}
+		},
+		{
+			"path": "pages/admin/questionBank",
+			"style": {
+				"navigationBarTitleText": "题库管理"
+			}
+		},
+		{
+			"path": "pages/questionBank",
+			"style": {
+				"navigationBarTitleText": "安全生产题库"
+			}
 		}
 	],
 	"globalStyle": {

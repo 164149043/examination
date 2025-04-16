@@ -1,7 +1,7 @@
 /**
  * @description 管理员登录页面
- * @author 开发者
- * @date 2024-04-08
+ * @author 张一依有把越女剑
+ * @date 2025-04-16
  */
 
 <template>
@@ -18,6 +18,7 @@
 					type="text" 
 					v-model="username" 
 					placeholder="请输入管理员账号"
+					@keypress="clearErrorMsg"
 				/>
 			</view>
 			
@@ -28,11 +29,17 @@
 					type="password" 
 					v-model="password" 
 					placeholder="请输入密码"
+					@keypress="clearErrorMsg"
 				/>
 			</view>
 			
-			<view class="login-btn" @click="login">
-				<text>登录</text>
+			<view class="error-msg" v-if="errorMsg">
+				<text>{{ errorMsg }}</text>
+			</view>
+			
+			<view class="login-btn" :class="{'loading': loading}" @click="login">
+				<text v-if="!loading">登录</text>
+				<text v-else>登录中...</text>
 			</view>
 		</view>
 	</view>
@@ -43,25 +50,44 @@
 		data() {
 			return {
 				username: '',
-				password: ''
+				password: '',
+				errorMsg: '',
+				loading: false
 			}
 		},
 		methods: {
+			clearErrorMsg() {
+				this.errorMsg = ''
+			},
 			login() {
-				if (this.username === 'admin' && this.password === '123456') {
-					// 保存登录状态
-					uni.setStorageSync('adminToken', 'admin')
-					
-					// 跳转到管理后台
-					uni.navigateTo({
-						url: '/pages/admin/dashboard'
-					})
-				} else {
-					uni.showToast({
-						title: '账号或密码错误',
-						icon: 'none'
-					})
+				// 验证输入
+				if (!this.username.trim()) {
+					this.errorMsg = '请输入账号'
+					return
 				}
+				
+				if (!this.password.trim()) {
+					this.errorMsg = '请输入密码'
+					return
+				}
+				
+				this.loading = true
+				
+				// 模拟网络请求延迟
+				setTimeout(() => {
+					if (this.username === 'admin' && this.password === '123456') {
+						// 保存登录状态
+						uni.setStorageSync('adminToken', 'admin')
+						
+						// 跳转到管理后台
+						uni.redirectTo({
+							url: '/pages/admin/dashboard'
+						})
+					} else {
+						this.loading = false
+						this.errorMsg = '账号或密码错误'
+					}
+				}, 800)
 			}
 		}
 	}
@@ -114,6 +140,16 @@
 		padding: 0 20rpx;
 		font-size: 28rpx;
 	}
+	
+	.error-msg {
+		padding: 10rpx 0;
+		margin-bottom: 10rpx;
+	}
+	
+	.error-msg text {
+		color: #ff4d4f;
+		font-size: 26rpx;
+	}
 
 	.login-btn {
 		width: 100%;
@@ -123,7 +159,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		margin-top: 40rpx;
+		margin-top: 20rpx;
+		transition: all 0.3s;
+	}
+	
+	.login-btn.loading {
+		background-color: #89c0fa;
+		opacity: 0.8;
 	}
 
 	.login-btn text {

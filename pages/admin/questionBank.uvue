@@ -1,0 +1,119 @@
+/**
+ * @description 题库管理页面
+ * @author 张一依有把越女剑
+ * @date 2025-04-16
+ */
+
+<template>
+	<view class="container">
+		<view class="header">
+			<text class="title">题库管理</text>
+			<text class="subtitle">共{{questions.length}}道题目</text>
+		</view>
+		
+		<view class="question-list">
+			<view class="question-card" v-for="(item, index) in questions" :key="item.id">
+				<view class="question-header">
+					<text class="question-number">题目 {{index + 1}}</text>
+				</view>
+				<view class="question-content">
+					<text class="question-text">{{item.question}}</text>
+					<view class="options">
+						<view v-for="(option, idx) in item.options" :key="idx" 
+							  class="option" :class="{'correct': Number(idx) === Number(item.answer)}">
+							<text>{{['A', 'B', 'C', 'D'][idx]}}. {{option}}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+import { questionBank } from '@/utils/questionBank.js'
+
+export default {
+	data() {
+		return {
+			questions: []
+		}
+	},
+	onLoad() {
+		this.loadQuestions()
+	},
+	methods: {
+		loadQuestions() {
+			this.questions = questionBank
+		}
+	}
+}
+</script>
+
+<style>
+.container {
+	padding: 20rpx;
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 30rpx;
+}
+
+.title {
+	font-size: 36rpx;
+	font-weight: bold;
+}
+
+.subtitle {
+	font-size: 28rpx;
+	color: #666;
+}
+
+.question-card {
+	background-color: #fff;
+	border-radius: 12rpx;
+	padding: 20rpx;
+	margin-bottom: 20rpx;
+	box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+}
+
+.question-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20rpx;
+}
+
+.question-number {
+	font-weight: bold;
+	color: #333;
+}
+
+.question-content {
+	padding: 10rpx;
+}
+
+.question-text {
+	font-size: 32rpx;
+	margin-bottom: 20rpx;
+}
+
+.options {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.option {
+	padding: 10rpx;
+	border-radius: 8rpx;
+}
+
+.option.correct {
+	background-color: rgba(52, 199, 89, 0.1);
+	color: #34C759;
+}
+</style> 

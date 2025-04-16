@@ -1,7 +1,7 @@
 /**
  * @description 首页
- * @author 开发者
- * @date 2024-04-08
+ * @author 张一依有把越女剑
+ * @date 2025-04-16
  */
 
 <template>
@@ -39,6 +39,11 @@
 			<text>开始考试</text>
 		</view>
 		
+		<!-- 查看题库按钮 -->
+		<view class="view-bank-btn" @click="viewQuestionBank">
+			<text>查看题库</text>
+		</view>
+		
 		<!-- 管理员入口 -->
 		<view class="admin-entry" @click="navigateToAdmin">
 			<text>管理员入口</text>
@@ -47,174 +52,83 @@
 </template>
 
 <script>
-	export default {
-		data() {
-			return {
-				userInfo: {
-					name: '',
-					department: ''
-				},
-				// 题库数据
-				questionBank: [
-					{
-						id: 1,
-						question: "安全生产的方针是什么？",
-						options: [
-							"安全第一，预防为主，综合治理",
-							"生产第一，安全第二",
-							"以人为本，安全发展",
-							"预防为主，保护优先"
-						],
-						answer: 0
-					},
-					{
-						id: 2,
-						question: "以下哪项不是安全生产的基本要求？",
-						options: [
-							"安全培训教育",
-							"安全设施配备",
-							"追求最大生产效率",
-							"安全检查制度"
-						],
-						answer: 2
-					},
-					{
-						id: 3,
-						question: "发现安全隐患应该怎么做？",
-						options: [
-							"隐瞒不报",
-							"立即报告主管领导",
-							"私下解决",
-							"等待他人发现"
-						],
-						answer: 1
-					},
-					{
-						id: 4,
-						question: "安全生产责任制的核心是什么？",
-						options: [
-							"安全生产投入",
-							"安全检查",
-							"岗位责任制",
-							"安全教育"
-						],
-						answer: 2
-					},
-					{
-						id: 5,
-						question: "以下哪种行为是正确的？",
-						options: [
-							"穿戴工作服进入施工现场",
-							"在施工现场吸烟",
-							"在施工现场打闹",
-							"在施工现场接打电话"
-						],
-						answer: 0
-					},
-					{
-						id: 6,
-						question: "安全生产管理的目的是什么？",
-						options: [
-							"提高生产效率",
-							"预防和减少事故",
-							"降低生产成本",
-							"提高员工收入"
-						],
-						answer: 1
-					},
-					{
-						id: 7,
-						question: "安全生产的首要任务是什么？",
-						options: [
-							"提高产量",
-							"控制成本",
-							"保护人员安全",
-							"提高效率"
-						],
-						answer: 2
-					},
-					{
-						id: 8,
-						question: "以下哪项不是安全生产事故的主要原因？",
-						options: [
-							"人的不安全行为",
-							"物的不安全状态",
-							"环境的不安全因素",
-							"天气状况"
-						],
-						answer: 3
-					},
-					{
-						id: 9,
-						question: "安全生产的关键是什么？",
-						options: [
-							"资金投入",
-							"设备更新",
-							"人的意识",
-							"制度建设"
-						],
-						answer: 2
-					},
-					{
-						id: 10,
-						question: "安全检查的主要目的是什么？",
-						options: [
-							"发现事故隐患",
-							"惩罚违规人员",
-							"完成工作任务",
-							"应付上级检查"
-						],
-						answer: 0
-					}
-				]
+import { getRandomQuestions } from '@/utils/questionBank.js'
+
+export default {
+	data() {
+		return {
+			userInfo: {
+				name: '',
+				department: ''
 			}
-		},
-		methods: {
-			// 从题库中随机抽取指定数量的题目
-			getRandomQuestions(count) {
-				const shuffled = [...this.questionBank].sort(() => 0.5 - Math.random())
-				return shuffled.slice(0, count)
-			},
+		}
+	},
+	onLoad() {
+		// 尝试加载已保存的用户信息
+		const savedUserInfo = uni.getStorageSync('userInfo')
+		if (savedUserInfo) {
+			this.userInfo = savedUserInfo
+		}
+	},
+	methods: {
+		// 开始考试
+		async startExam() {
+			// 检查用户信息是否完整
+			if (!this.userInfo.name || !this.userInfo.department) {
+				uni.showToast({
+					title: '请先完善个人信息',
+					icon: 'none'
+				})
+				return
+			}
 			
-			startExam() {
-				// 验证输入
-				if (!this.userInfo.name || !this.userInfo.department) {
-					uni.showToast({
-						title: '请填写姓名和部门',
-						icon: 'none'
-					})
-					return
-				}
+			// 保存用户信息
+			uni.setStorageSync('userInfo', this.userInfo)
+			
+			try {
+				// 随机抽取10道题目
+				const questions = getRandomQuestions(10)
 				
-				// 保存用户信息
-				uni.setStorageSync('userInfo', this.userInfo)
-				
-				// 创建考试信息
-				const examInfo = {
-					id: 1,
-					title: '安全生产基础知识考试',
-					description: '10道单选题，每题10分，满分100分',
-					duration: 60,
-					questions: this.getRandomQuestions(10),
+				// 创建考试对象
+				const exam = {
+					id: Date.now(),
+					title: '安全生产考试',
+					description: '安全生产知识测试',
+					duration: 15, // 15分钟
+					questions: questions,
 					startTime: Date.now()
 				}
 				
 				// 保存考试信息
-				uni.setStorageSync('currentExam', examInfo)
+				uni.setStorageSync('currentExam', exam)
 				
-				// 跳转到考试页面
+				// 跳转到答题页面
 				uni.navigateTo({
 					url: '/pages/examPaper/examPaper'
 				})
-			},
-			
-			navigateToAdmin() {
-				uni.navigateTo({
-					url: '/pages/admin/login'
+			} catch (error) {
+				console.error('获取题目失败', error)
+				uni.showToast({
+					title: '获取题目失败',
+					icon: 'none'
 				})
 			}
+		},
+		
+		navigateToAdmin() {
+			uni.navigateTo({
+				url: '/pages/admin/login'
+			})
+		},
+		
+		// 查看题库
+		viewQuestionBank() {
+			uni.navigateTo({
+				url: '/pages/questionBank'
+			})
 		}
 	}
+}
 </script>
 
 <style>
@@ -284,6 +198,23 @@
 	}
 
 	.start-btn text {
+		font-size: 32rpx;
+		color: #fff;
+	}
+	
+	/* 查看题库按钮样式 */
+	.view-bank-btn {
+		width: 100%;
+		height: 88rpx;
+		background-color: #34C759;
+		border-radius: 44rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 20rpx;
+	}
+	
+	.view-bank-btn text {
 		font-size: 32rpx;
 		color: #fff;
 	}
